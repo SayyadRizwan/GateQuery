@@ -1,0 +1,17 @@
+year,paper,type,source_url,local_file
+2025,CS1,question_paper,https://gate2026.iitg.ac.in/doc/download/2025/CS12025.pdf,data\papers\GATE_CS_2025_CS1.pdf
+2025,CS1,answer_key,https://gate2026.iitg.ac.in/doc/download/2025_Key/CS1_Keys.pdf,data\answer_keys\GATE_CS_2025_CS1_ANSWER.pdf
+2025,CS2,question_paper,https://gate2026.iitg.ac.in/doc/download/2025/CS22025.pdf,data\papers\GATE_CS_2025_CS2.pdf
+2025,CS2,answer_key,https://gate2026.iitg.ac.in/doc/download/2025_Key/CS2_Keys.pdf,data\answer_keys\GATE_CS_2025_CS2_ANSWER.pdf
+2024,CS1,question_paper,https://gate2026.iitg.ac.in/doc/download/2024/CS124S5.pdf,data\papers\GATE_CS_2024_CS1.pdf
+2024,CS1,answer_key,https://gate2026.iitg.ac.in/doc/download/2024/CS1FinalAnswerKey.pdf,data\answer_keys\GATE_CS_2024_CS1_ANSWER.pdf
+2024,CS2,question_paper,https://gate2026.iitg.ac.in/doc/download/2024/CS224S6.pdf,data\papers\GATE_CS_2024_CS2.pdf
+2024,CS2,answer_key,https://gate2026.iitg.ac.in/doc/download/2024/CS2FinalAnswerKey.pdf,data\answer_keys\GATE_CS_2024_CS2_ANSWER.pdf
+2023,CS,question_paper,https://gate2026.iitg.ac.in/doc/download/2023/cs_2023.pdf,data\papers\GATE_CS_2023.pdf
+2023,CS,answer_key,https://gate2026.iitg.ac.in/doc/download/Answer_keys2023/CS_ANS_GATE2023.pdf,data\answer_keys\GATE_CS_2023_ANSWER.pdf
+2022,CS,question_paper,https://gate2026.iitg.ac.in/doc/download/2022/cs_2022.pdf,data\papers\GATE_CS_2022.pdf
+2022,CS,answer_key,https://gate2026.iitg.ac.in/doc/download/Answer_keys2022/cs_2022.pdf,data\answer_keys\GATE_CS_2022_ANSWER.pdf
+2021,CS,question_paper,https://gate2026.iitg.ac.in/doc/download/2021/cs_2021.pdf,data\papers\GATE_CS_2021.pdf
+2021,CS,answer_key,https://gate2026.iitg.ac.in/doc/download/Answer_keys2021/cs_merged_2021.pdf,data\answer_keys\GATE_CS_2021_ANSWER.pdf
+2020,CS,question_paper,https://gate2026.iitg.ac.in/doc/download/2020/cs_2020.pdf,data\papers\GATE_CS_2020.pdf
+2019,CS,question_paper,https://gate2026.iitg.ac.in/doc/download/2019/cs_2019.pdf,data\papers\GATE_CS_2019.pdf

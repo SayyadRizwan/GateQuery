@@ -1,0 +1,353 @@
+import streamlit as st
+import json
+import faiss
+from sentence_transformers import SentenceTransformer
+from google import genai
+
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+INDEX_FILE = "data/vector_store/questions.index"
+DOCUMENTS_FILE = "data/vector_store/documents.json"
+
+st.set_page_config(
+    page_title="GATEQuery",
+    page_icon="🎓",
+    layout="wide"
+)
+
+
+# ============================================================
+# LOAD MODELS / DATA
+# ============================================================
+
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer(
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+
+@st.cache_resource
+def load_faiss():
+    return faiss.read_index(INDEX_FILE)
+
+
+@st.cache_data
+def load_documents():
+    with open(DOCUMENTS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@st.cache_resource
+def load_gemini():
+
+    api_key = st.secrets.get("GEMINI_API_KEY")
+
+    if not api_key:
+        st.error(
+            "Gemini API key not found. "
+            "Add GEMINI_API_KEY to Streamlit secrets."
+        )
+        st.stop()
+
+    return genai.Client(api_key=api_key)
+
+
+embedding_model = load_embedding_model()
+index = load_faiss()
+documents = load_documents()
+client = load_gemini()
+
+
+# ============================================================
+# RETRIEVAL
+# ============================================================
+
+def retrieve(
+    query,
+    top_k=5,
+    year=None,
+    paper=None,
+    question_type=None
+):
+
+    query_embedding = embedding_model.encode(
+        [query],
+        convert_to_numpy=True
+    ).astype("float32")
+
+    faiss.normalize_L2(query_embedding)
+
+    search_k = min(top_k * 10, index.ntotal)
+
+    scores, indices = index.search(
+        query_embedding,
+        search_k
+    )
+
+    results = []
+
+    for score, idx in zip(scores[0], indices[0]):
+
+        if idx == -1:
+            continue
+
+        doc = documents[idx]
+        metadata = doc["metadata"]
+
+        if year is not None:
+            if metadata.get("year") != year:
+                continue
+
+        if paper != "All":
+            if metadata.get("paper") != paper:
+                continue
+
+        if question_type != "All":
+            if metadata.get("question_type") != question_type:
+                continue
+
+        results.append({
+            "score": float(score),
+            "document": doc
+        })
+
+        if len(results) >= top_k:
+            break
+
+    return results
+
+
+# ============================================================
+# GENERATION
+# ============================================================
+
+def generate_answer(query, results):
+
+    context = "\n\n".join(
+        f"""
+--- PYQ {i} ---
+
+{result["document"]["text"]}
+
+Similarity Score: {result["score"]:.4f}
+"""
+        for i, result in enumerate(results, start=1)
+    )
+
+    prompt = f"""
+You are GATEQuery, an AI assistant for analyzing
+GATE Computer Science previous-year questions.
+
+Answer the user's query using the retrieved PYQs.
+
+Rules:
+
+1. Use the retrieved PYQs as your primary evidence.
+2. Do not invent questions, answers, years, or question numbers.
+3. Mention the GATE year and question number when referring
+   to a PYQ.
+4. If an answer key is unavailable, explicitly say:
+   "Answer key not available."
+5. Explain the relevant concept clearly.
+6. If the retrieved questions are not sufficiently relevant,
+   say so.
+7. Do not claim that a question exists in a particular year
+   unless it appears in the retrieved context.
+
+USER QUERY:
+{query}
+
+RETRIEVED PYQs:
+{context}
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.title("🎓 GATEQuery")
+
+    st.markdown(
+        """
+        **AI-Powered GATE PYQ Retrieval & Analysis**
+
+        Search and analyze GATE Computer Science
+        previous-year questions using RAG.
+        """
+    )
+
+    st.divider()
+
+    st.subheader("Filters")
+
+    years = sorted(
+        {
+            doc["metadata"]["year"]
+            for doc in documents
+            if doc["metadata"].get("year")
+        },
+        reverse=True
+    )
+
+    selected_year = st.selectbox(
+        "GATE Year",
+        ["All"] + years
+    )
+
+    selected_paper = st.selectbox(
+        "Paper",
+        ["All", "CS", "CS1", "CS2"]
+    )
+
+    selected_type = st.selectbox(
+        "Question Type",
+        ["All", "MCQ", "MSQ", "NAT"]
+    )
+
+    top_k = st.slider(
+        "Number of PYQs",
+        min_value=3,
+        max_value=10,
+        value=5
+    )
+
+    st.divider()
+
+    st.caption(
+        f"📚 {len(documents)} PYQs indexed"
+    )
+
+    st.caption(
+        "🔎 Semantic search powered by FAISS"
+    )
+
+    st.caption(
+        "🤖 Answers generated by Gemini"
+    )
+
+
+# ============================================================
+# MAIN UI
+# ============================================================
+
+st.title("🎓 GATEQuery")
+
+st.subheader(
+    "AI-Powered GATE Computer Science PYQ Analyzer"
+)
+
+st.write(
+    "Ask questions about GATE Computer Science "
+    "previous-year questions using Retrieval-Augmented Generation."
+)
+
+
+query = st.text_input(
+    "Ask GATEQuery anything about GATE PYQs",
+    placeholder=(
+        "e.g. Show me GATE questions related to "
+        "Binary Search Trees"
+    )
+)
+
+
+# ============================================================
+# SEARCH
+# ============================================================
+
+if st.button("🔍 Analyze", type="primary"):
+
+    if not query.strip():
+
+        st.warning("Please enter a question.")
+
+    else:
+
+        year = (
+            None
+            if selected_year == "All"
+            else selected_year
+        )
+
+        with st.spinner("Searching relevant PYQs..."):
+
+            results = retrieve(
+                query=query,
+                top_k=top_k,
+                year=year,
+                paper=selected_paper,
+                question_type=selected_type
+            )
+
+        if not results:
+
+            st.warning(
+                "No relevant PYQs were found with "
+                "the selected filters."
+            )
+
+        else:
+
+            with st.spinner(
+                "Generating analysis with Gemini..."
+            ):
+
+                answer = generate_answer(
+                    query,
+                    results
+                )
+
+            # ------------------------------------------------
+            # ANSWER
+            # ------------------------------------------------
+
+            st.markdown("## 💡 Analysis")
+
+            st.markdown(answer)
+
+            # ------------------------------------------------
+            # SOURCES
+            # ------------------------------------------------
+
+            st.markdown("## 📚 Retrieved PYQs")
+
+            for i, result in enumerate(
+                results,
+                start=1
+            ):
+
+                doc = result["document"]
+                metadata = doc["metadata"]
+
+                title = (
+                    f"GATE {metadata.get('year')} | "
+                    f"{metadata.get('paper')} | "
+                    f"Q{metadata.get('question_number')}"
+                )
+
+                with st.expander(
+                    f"{i}. {title}"
+                ):
+
+                    st.caption(
+                        f"Similarity: "
+                        f"{result['score']:.4f}"
+                    )
+
+                    st.markdown(
+                        doc["text"]
+                    )
